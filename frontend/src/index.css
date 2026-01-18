@@ -1,0 +1,60 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom styles */
+.dashboard-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-card-content {
+  flex-grow: 1;
+}
+
+.risk-high {
+  color: #f44336;
+}
+
+.risk-medium {
+  color: #ff9800;
+}
+
+.risk-low {
+  color: #4caf50;
+}
+
+.status-pending {
+  color: #9e9e9e;
+}
+
+.status-confirmed {
+  color: #2196f3;
+}
+
+.status-in-production {
+  color: #ff9800;
+}
+
+.status-shipped {
+  color: #9c27b0;
+}
+
+.status-delivered {
+  color: #4caf50;
+}
+
+.status-cancelled {
+  color: #f44336;
+}
