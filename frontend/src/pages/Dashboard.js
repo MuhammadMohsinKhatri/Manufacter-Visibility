@@ -32,6 +32,17 @@ import {
   Legend,
 } from 'chart.js';
 
+// Services
+import { 
+  orderService, 
+  inventoryService, 
+  productionService, 
+  supplyChainService 
+} from '../services';
+
+// Notification context
+import { useNotification } from '../context/NotificationContext';
+
 // Register ChartJS components
 ChartJS.register(
   CategoryScale,
@@ -44,17 +55,6 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-
-// Services
-import { 
-  orderService, 
-  inventoryService, 
-  productionService, 
-  supplyChainService 
-} from '../services';
-
-// Notification context
-import { useNotification } from '../context/NotificationContext';
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
