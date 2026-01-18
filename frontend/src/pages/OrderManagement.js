@@ -136,7 +136,7 @@ export default function OrderManagement() {
   };
 
   const handleCheckFeasibility = () => {
-    navigate('/orders/feasibility');
+    navigate('/order-feasibility');
   };
 
   // For demo purposes, we'll use simulated data

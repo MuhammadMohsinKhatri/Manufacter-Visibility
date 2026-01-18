@@ -1,7 +1,6 @@
 fastapi==0.128.0
 uvicorn==0.40.0
 sqlalchemy==2.0.45
-pymysql==1.1.2
 alembic==1.18.1
 pydantic==2.12.5
 python-dotenv==1.2.1
@@ -10,3 +9,12 @@ python-jose==3.3.0
 passlib==1.7.4
 python-multipart==0.0.9
 bcrypt==4.1.2
+
+# AI/ML Dependencies
+openai==1.12.0
+httpx>=0.24.0  # Required by openai, explicitly install compatible version
+scikit-learn==1.4.0
+pandas==2.2.0
+numpy==1.26.3
+
+# pymysql==1.1.2  # Optional: Only needed if using MySQL instead of SQLite

@@ -143,6 +143,12 @@ def check_production_capacity(
         }
     
     # Calculate total capacity in hours
+    # Fix timezone-aware datetime comparison
+    if start_date.tzinfo is not None and end_date.tzinfo is None:
+        end_date = end_date.replace(tzinfo=start_date.tzinfo)
+    elif start_date.tzinfo is None and end_date.tzinfo is not None:
+        start_date = start_date.replace(tzinfo=end_date.tzinfo)
+    
     days = (end_date - start_date).days + 1
     hours_per_day = 24  # Assuming 24/7 operation - adjust as needed
     
@@ -157,8 +163,23 @@ def check_production_capacity(
     
     for schedule in schedules:
         # Calculate overlap with requested period
-        schedule_start = max(schedule.scheduled_start, start_date)
-        schedule_end = min(schedule.scheduled_end, end_date)
+        # Fix timezone issues
+        sched_start = schedule.scheduled_start
+        sched_end = schedule.scheduled_end
+        
+        # Ensure all datetimes have same timezone awareness
+        if sched_start.tzinfo is None and start_date.tzinfo is not None:
+            sched_start = sched_start.replace(tzinfo=start_date.tzinfo)
+        elif sched_start.tzinfo is not None and start_date.tzinfo is None:
+            sched_start = sched_start.replace(tzinfo=None)
+            
+        if sched_end.tzinfo is None and end_date.tzinfo is not None:
+            sched_end = sched_end.replace(tzinfo=end_date.tzinfo)
+        elif sched_end.tzinfo is not None and end_date.tzinfo is None:
+            sched_end = sched_end.replace(tzinfo=None)
+        
+        schedule_start = max(sched_start, start_date)
+        schedule_end = min(sched_end, end_date)
         
         if schedule_end > schedule_start:
             duration_hours = (schedule_end - schedule_start).total_seconds() / 3600

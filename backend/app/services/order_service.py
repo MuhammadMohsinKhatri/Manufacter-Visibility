@@ -7,6 +7,7 @@ from app.schemas.order import OrderCreate, OrderUpdate, OrderFeasibilityCheck
 from app.services.inventory_service import check_component_availability
 from app.services.production_service import check_production_capacity
 from app.services.risk_service import assess_supply_chain_risks
+from app.services.ai_service import analyze_order_feasibility_with_ai
 
 class OrderService:
     @staticmethod
@@ -191,5 +192,50 @@ class OrderService:
         risk_confidence = max(0, 100 - risk_assessment["overall_risk_score"])
         
         result["confidence_score"] = (inventory_confidence * 0.4 + production_confidence * 0.4 + risk_confidence * 0.2)
+        
+        # **AI ENHANCEMENT**: Use AI to analyze feasibility and provide intelligent recommendations
+        try:
+            print(f"[DEBUG] OrderService: Starting AI analysis...")
+            print(f"[DEBUG] OrderService: Product IDs: {feasibility_check.product_ids}")
+            print(f"[DEBUG] OrderService: Quantities: {feasibility_check.quantities}")
+            
+            ai_analysis = analyze_order_feasibility_with_ai(
+                order_data={
+                    "product_ids": feasibility_check.product_ids,
+                    "quantities": feasibility_check.quantities,
+                    "requested_delivery_date": str(requested_date)
+                },
+                inventory_analysis={
+                    "inventory_constraints": result["inventory_constraints"],
+                    "all_available": all_components_available
+                },
+                production_analysis={
+                    "production_constraints": result["production_constraints"],
+                    "available_hours": production_capacity["available_hours"],
+                    "required_hours": total_production_hours
+                },
+                risk_analysis=risk_assessment
+            )
+            
+            print(f"[DEBUG] OrderService: AI analysis completed")
+            print(f"[DEBUG] OrderService: AI enabled: {ai_analysis.get('ai_enabled', False)}")
+            print(f"[DEBUG] OrderService: AI analysis keys: {list(ai_analysis.keys())}")
+            
+            # Add AI insights to result
+            result["ai_analysis"] = ai_analysis
+            result["ai_recommendation"] = ai_analysis.get("recommendation", "REVIEW_REQUIRED")
+            result["actionable_recommendations"] = ai_analysis.get("actionable_recommendations", [])
+            result["alternative_strategies"] = ai_analysis.get("alternative_strategies", [])
+            result["executive_summary"] = ai_analysis.get("executive_summary", "")
+            result["critical_bottleneck"] = ai_analysis.get("critical_bottleneck", "Unknown")
+            
+            # Override confidence if AI provides better estimate
+            if ai_analysis.get("ai_enabled") and ai_analysis.get("confidence"):
+                result["ai_confidence_score"] = ai_analysis["confidence"]
+            
+        except Exception as e:
+            # If AI fails, continue with rule-based analysis
+            result["ai_analysis"] = {"error": str(e), "ai_enabled": False}
+            result["ai_recommendation"] = "REVIEW_REQUIRED"
         
         return result

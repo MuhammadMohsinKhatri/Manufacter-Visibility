@@ -36,7 +36,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
 
 // Services
-import { orderService, inventoryService, productionService } from '../services';
+import { orderService } from '../services';
 
 // Notification context
 import { useNotification } from '../context/NotificationContext';
@@ -102,8 +102,8 @@ export default function OrderFeasibility() {
       setLoading(true);
       setError(null);
       
-      // In a real app, this would call the API
-      // For demo, simulate a response
+      // Move to loading step first
+      handleNext();
       
       // Convert to the format expected by the API
       const checkData = {
@@ -112,33 +112,24 @@ export default function OrderFeasibility() {
         requested_delivery_date: deliveryDate.toISOString()
       };
       
-      // Simulate API call
-      // const result = await orderService.checkFeasibility(checkData);
+      // Call the API for feasibility check
+      const result = await orderService.checkFeasibility(checkData);
       
-      // Simulated response
-      const simulatedResult = {
-        feasible: Math.random() > 0.3, // 70% chance of being feasible
-        earliest_possible_date: addDays(new Date(), Math.floor(Math.random() * 40) + 15).toISOString(),
-        inventory_constraints: [
-          'Insufficient Circuit Board: need 10, have 5',
-          'Insufficient Power Supply: need 5, have 3'
-        ],
-        production_constraints: [
-          'Insufficient production capacity: need 120 hours, have 80 hours available'
-        ],
-        risk_factors: [
-          'Weather risk in Southeast Asia: Tropical storm approaching manufacturing hubs',
-          'Market risk in Global: Semiconductor shortage affecting electronics supply'
-        ],
-        confidence_score: Math.floor(Math.random() * 100)
-      };
+      console.log('Feasibility check result:', result);
       
-      setFeasibilityResult(simulatedResult);
+      if (!result) {
+        throw new Error('No result received from server');
+      }
+      
+      setFeasibilityResult(result);
+      // Move to results step
       handleNext();
     } catch (err) {
       console.error('Error checking feasibility:', err);
       setError('Failed to check order feasibility');
       showError('Failed to check order feasibility');
+      // Go back to step 0 on error
+      setActiveStep(0);
     } finally {
       setLoading(false);
     }
@@ -204,8 +195,13 @@ export default function OrderFeasibility() {
                 label="Requested Delivery Date"
                 value={deliveryDate}
                 onChange={(newValue) => setDeliveryDate(newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth sx={{ mt: 2 }} />}
                 minDate={addDays(new Date(), 7)}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    sx: { mt: 2 }
+                  }
+                }}
               />
             </LocalizationProvider>
             
@@ -249,6 +245,100 @@ export default function OrderFeasibility() {
                     </Typography>
                   </Alert>
                 </Grid>
+                
+                {/* AI Analysis Section */}
+                {feasibilityResult.ai_analysis?.ai_enabled && (
+                  <Grid item xs={12}>
+                    <Card sx={{ bgcolor: '#f0f7ff', border: '2px solid #2196f3' }}>
+                      <CardHeader 
+                        title="🤖 AI-Powered Analysis" 
+                        titleTypographyProps={{ variant: 'h6', color: 'primary' }}
+                        subheader={`Model: ${feasibilityResult.ai_analysis.model_used || 'GPT-4'}`}
+                      />
+                      <CardContent>
+                        {feasibilityResult.critical_bottleneck && (
+                          <>
+                            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                              Critical Bottleneck:
+                            </Typography>
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                              {feasibilityResult.critical_bottleneck}
+                            </Alert>
+                          </>
+                        )}
+                        
+                        {feasibilityResult.actionable_recommendations?.length > 0 && (
+                          <>
+                            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', mt: 2 }}>
+                              ✅ Actionable Recommendations:
+                            </Typography>
+                            <List dense>
+                              {feasibilityResult.actionable_recommendations.map((rec, idx) => (
+                                <ListItem key={idx}>
+                                  <ListItemText 
+                                    primary={`${idx + 1}. ${rec}`}
+                                    primaryTypographyProps={{ variant: 'body2' }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </>
+                        )}
+                        
+                        {feasibilityResult.alternative_strategies?.length > 0 && (
+                          <>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                              💡 Alternative Strategies:
+                            </Typography>
+                            <List dense>
+                              {feasibilityResult.alternative_strategies.map((strategy, idx) => (
+                                <ListItem key={idx}>
+                                  <ListItemText 
+                                    primary={`• ${strategy}`}
+                                    primaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </>
+                        )}
+                        
+                        {feasibilityResult.executive_summary && (
+                          <>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                              📊 Executive Summary:
+                            </Typography>
+                            <Alert severity="info" sx={{ mt: 1 }}>
+                              {feasibilityResult.executive_summary}
+                            </Alert>
+                          </>
+                        )}
+                        
+                        {feasibilityResult.ai_confidence_score && (
+                          <Box sx={{ mt: 2 }}>
+                            <Chip 
+                              label={`AI Confidence: ${feasibilityResult.ai_confidence_score}%`}
+                              color={feasibilityResult.ai_confidence_score > 70 ? 'success' : 'warning'}
+                              size="small"
+                            />
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+                
+                {/* Show message if AI is not enabled */}
+                {feasibilityResult.ai_analysis && !feasibilityResult.ai_analysis.ai_enabled && (
+                  <Grid item xs={12}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      ℹ️ AI analysis is currently unavailable. Using rule-based analysis. 
+                      Configure OPENAI_API_KEY in backend/.env to enable AI features.
+                    </Alert>
+                  </Grid>
+                )}
                 
                 <Grid item xs={12} md={4}>
                   <Card>

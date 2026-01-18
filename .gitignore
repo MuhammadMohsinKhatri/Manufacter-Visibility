@@ -13,3 +13,7 @@ node_modules
 .env.production.local
 
 venv/
+*.db
+*.sqlite
+*.sqlite3
+backend/manufacter_visibility.db

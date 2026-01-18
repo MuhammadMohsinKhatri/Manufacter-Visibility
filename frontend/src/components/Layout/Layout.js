@@ -26,6 +26,8 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import FactoryIcon from '@mui/icons-material/Factory';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 
@@ -37,6 +39,8 @@ const drawerWidth = 240;
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Order Management', icon: <ShoppingCartIcon />, path: '/orders' },
+  { text: '🤖 Order Feasibility', icon: <AssessmentIcon />, path: '/order-feasibility' },
+  { text: '🤖 Shipment Tracking', icon: <TrackChangesIcon />, path: '/shipment-tracking' },
   { text: 'Inventory', icon: <InventoryIcon />, path: '/inventory' },
   { text: 'Production', icon: <FactoryIcon />, path: '/production' },
   { text: 'Supply Chain', icon: <LocalShippingIcon />, path: '/supply-chain' },

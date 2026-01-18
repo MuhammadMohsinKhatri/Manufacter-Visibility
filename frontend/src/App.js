@@ -14,6 +14,7 @@ import OrderFeasibility from './pages/OrderFeasibility';
 import Inventory from './pages/Inventory';
 import Production from './pages/Production';
 import SupplyChain from './pages/SupplyChain';
+import ShipmentTracking from './pages/ShipmentTracking';
 import Login from './pages/Login';
 
 // Context
@@ -75,7 +76,8 @@ function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="orders" element={<OrderManagement />} />
                 <Route path="orders/:id" element={<OrderDetail />} />
-                <Route path="orders/feasibility" element={<OrderFeasibility />} />
+                <Route path="order-feasibility" element={<OrderFeasibility />} />
+                <Route path="shipment-tracking" element={<ShipmentTracking />} />
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="production" element={<Production />} />
                 <Route path="supply-chain" element={<SupplyChain />} />

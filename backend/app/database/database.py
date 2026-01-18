@@ -7,10 +7,19 @@ import os
 load_dotenv()
 
 # Database connection settings
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:password@localhost:3306/manufacter_visibility")
+# Default to SQLite (easy to use, no setup required)
+# The database file will be created in the backend directory
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./manufacter_visibility.db")
 
 # Create SQLAlchemy engine
-engine = create_engine(DATABASE_URL)
+# SQLite-specific settings:
+# - check_same_thread=False: allows SQLite to work with FastAPI's async nature
+# - echo=False: set to True for SQL query logging during development
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
+    echo=False  # Set to True for SQL query logging
+)
 
 # Create sessionmaker
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

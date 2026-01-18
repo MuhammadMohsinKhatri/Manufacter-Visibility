@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 
 from app.models.models import ExternalRisk, Component, Supplier, SupplierComponent, Shipment, RiskLevel
+from app.services.ai_service import generate_risk_mitigation_strategies
+from app.services.weather_service import get_weather_for_location
 
 load_dotenv()
 
@@ -234,10 +236,27 @@ def update_external_risks(db: Session) -> Dict[str, Any]:
             )
             added_risks.append(db_risk)
     
+    # Convert added_risks to dictionaries for serialization
+    added_risks_data = []
+    for risk in added_risks:
+        risk_dict = {
+            "id": risk.id,
+            "risk_type": risk.risk_type,
+            "region": risk.region,
+            "description": risk.description,
+            "risk_level": risk.risk_level.value if hasattr(risk.risk_level, 'value') else str(risk.risk_level),
+            "start_date": risk.start_date.isoformat() if isinstance(risk.start_date, datetime) else (str(risk.start_date) if risk.start_date else None),
+            "end_date": risk.end_date.isoformat() if isinstance(risk.end_date, datetime) else (str(risk.end_date) if risk.end_date else None),
+            "data": risk.data,
+            "created_at": risk.created_at.isoformat() if isinstance(risk.created_at, datetime) else (str(risk.created_at) if risk.created_at else None),
+            "updated_at": risk.updated_at.isoformat() if isinstance(risk.updated_at, datetime) else (str(risk.updated_at) if risk.updated_at else None)
+        }
+        added_risks_data.append(risk_dict)
+    
     return {
         "success": True,
         "message": f"Added {len(added_risks)} new risks",
-        "added_risks": added_risks
+        "added_risks": added_risks_data
     }
 
 def assess_supply_chain_risks(
@@ -336,24 +355,80 @@ def assess_supply_chain_risks(
                     ]
                 })
     
-    # Generate mitigation suggestions
+    # Convert ExternalRisk objects to dictionaries for serialization (needed for AI analysis)
+    risks_data = []
+    for risk in risks:
+        risk_dict = {
+            "id": risk.id,
+            "risk_type": risk.risk_type,
+            "region": risk.region,
+            "description": risk.description,
+            "risk_level": risk.risk_level.value if hasattr(risk.risk_level, 'value') else str(risk.risk_level),
+            "start_date": risk.start_date.isoformat() if isinstance(risk.start_date, datetime) else (str(risk.start_date) if risk.start_date else None),
+            "end_date": risk.end_date.isoformat() if isinstance(risk.end_date, datetime) else (str(risk.end_date) if risk.end_date else None),
+            "data": risk.data,
+            "created_at": risk.created_at.isoformat() if isinstance(risk.created_at, datetime) else (str(risk.created_at) if risk.created_at else None),
+            "updated_at": risk.updated_at.isoformat() if isinstance(risk.updated_at, datetime) else (str(risk.updated_at) if risk.updated_at else None)
+        }
+        risks_data.append(risk_dict)
+    
+    # Generate mitigation suggestions using AI
     mitigation_suggestions = []
+    ai_mitigation = None
     
-    if affected_components:
-        mitigation_suggestions.append(
-            f"Consider alternative suppliers for {len(affected_components)} affected components"
-        )
-    
-    if affected_suppliers:
-        mitigation_suggestions.append(
-            f"Increase safety stock for components from {len(affected_suppliers)} affected suppliers"
-        )
-    
-    high_risks = [risk for risk in risks if risk.risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]]
-    if high_risks:
-        mitigation_suggestions.append(
-            "Develop contingency plans for high-risk scenarios"
-        )
+    try:
+        # Use AI to generate intelligent mitigation strategies
+        print(f"[DEBUG] Risk Service: Calling generate_risk_mitigation_strategies with {len(risks_data)} risks")
+        ai_mitigation = generate_risk_mitigation_strategies(risks_data)
+        print(f"[DEBUG] Risk Service: generate_risk_mitigation_strategies returned: {ai_mitigation is not None}, ai_enabled: {ai_mitigation.get('ai_enabled', 'NOT_FOUND') if ai_mitigation else 'N/A'}")
+        
+        if ai_mitigation and ai_mitigation.get("ai_enabled"):
+            mitigation_suggestions = ai_mitigation.get("priority_actions", [])
+        else:
+            # Fallback to rule-based suggestions
+            if affected_components:
+                mitigation_suggestions.append(
+                    f"Consider alternative suppliers for {len(affected_components)} affected components"
+                )
+            
+            if affected_suppliers:
+                mitigation_suggestions.append(
+                    f"Increase safety stock for components from {len(affected_suppliers)} affected suppliers"
+                )
+            
+            high_risks = [risk for risk in risks if risk.risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]]
+            if high_risks:
+                mitigation_suggestions.append(
+                    "Develop contingency plans for high-risk scenarios"
+                )
+    except Exception as e:
+        print(f"[DEBUG] Risk Service: Exception in AI mitigation: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"[DEBUG] Risk Service: Traceback:\n{traceback.format_exc()}")
+        
+        # Set ai_mitigation to indicate failure (not None)
+        ai_mitigation = {
+            "ai_enabled": False,
+            "error": str(e),
+            "priority_actions": []
+        }
+        
+        # Fallback to rule-based suggestions
+        if affected_components:
+            mitigation_suggestions.append(
+                f"Consider alternative suppliers for {len(affected_components)} affected components"
+            )
+        
+        if affected_suppliers:
+            mitigation_suggestions.append(
+                f"Increase safety stock for components from {len(affected_suppliers)} affected suppliers"
+            )
+        
+        high_risks = [risk for risk in risks if risk.risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]]
+        if high_risks:
+            mitigation_suggestions.append(
+                "Develop contingency plans for high-risk scenarios"
+            )
     
     # Calculate overall risk score (0-100)
     risk_score_factors = []
@@ -401,10 +476,27 @@ def assess_supply_chain_risks(
         avg_reliability_score * 0.3
     )
     
-    return {
-        "risks": risks,
+    # Note: risks_data was already created earlier for AI analysis
+    
+    result = {
+        "risks": risks_data,
         "affected_components": affected_components,
         "affected_suppliers": affected_suppliers,
         "mitigation_suggestions": mitigation_suggestions,
         "overall_risk_score": overall_risk_score
     }
+    
+    # Add AI mitigation strategies if available (always add if not None)
+    # Ensure ai_mitigation is always a dict, never None
+    if ai_mitigation is None:
+        print(f"[DEBUG] Risk Service: WARNING - ai_mitigation is None, creating fallback dict")
+        ai_mitigation = {
+            "ai_enabled": False,
+            "priority_actions": [],
+            "error": "ai_mitigation was None (unexpected)"
+        }
+    
+    result["ai_mitigation"] = ai_mitigation
+    print(f"[DEBUG] Risk Service: Added ai_mitigation to result, ai_enabled: {ai_mitigation.get('ai_enabled', False)}")
+    
+    return result
