@@ -154,16 +154,51 @@ def assess_weather_impact_on_shipment(
     severe_at_origin = origin_weather.get("severe_weather", False)
     severe_at_destination = destination_weather.get("severe_weather", False)
     
-    # Determine delay probability
+    # Determine delay probability based on multiple factors
+    base_delay_prob = 5  # Base risk for any shipment
+    
+    # Factor 1: Shipping method risk
+    route_risk_multiplier = {
+        "sea": 1.5,      # Sea shipping has higher delay risk
+        "ocean": 1.5,
+        "air": 0.5,      # Air shipping is faster and more reliable
+        "air freight": 0.5,
+        "air cargo": 0.5,
+        "truck": 1.0,    # Standard risk
+        "road": 1.0,
+        "train": 0.8,    # Rail is relatively reliable
+        "rail": 0.8
+    }
+    route_multiplier = route_risk_multiplier.get(route_type.lower(), 1.0)
+    
+    # Factor 2: Weather risk scores (even if not severe)
+    origin_risk = origin_weather.get("risk_score", 0)
+    dest_risk = destination_weather.get("risk_score", 0)
+    weather_risk_contribution = (origin_risk + dest_risk) * 0.3  # 30% weight
+    
+    # Factor 3: Severe weather impact
     if severe_at_origin and severe_at_destination:
-        delay_probability = 85
+        severe_weather_risk = 70
         expected_delay_days = 5
     elif severe_at_origin or severe_at_destination:
-        delay_probability = 60
+        severe_weather_risk = 45
         expected_delay_days = 3
     else:
-        delay_probability = 15
+        severe_weather_risk = 0
         expected_delay_days = 0
+    
+    # Calculate final delay probability
+    delay_probability = min(
+        (base_delay_prob + weather_risk_contribution + severe_weather_risk) * route_multiplier,
+        95  # Cap at 95%
+    )
+    
+    # Adjust expected delay days based on route type
+    if expected_delay_days > 0:
+        if route_type.lower() in ["air", "air freight", "air cargo"]:
+            expected_delay_days = max(1, expected_delay_days - 1)  # Air is faster
+        elif route_type.lower() in ["sea", "ocean"]:
+            expected_delay_days = expected_delay_days + 1  # Sea can have longer delays
     
     recommendations = []
     if delay_probability > 50:

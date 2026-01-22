@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database.database import engine, Base, get_db
 from app.routers import orders_router, inventory_router, production_router, supply_chain_router
-from app.routers import shipment_tracking
+from app.routers import shipment_tracking, optimization
 from app.models import models
 import logging
 
@@ -36,6 +36,7 @@ app.include_router(inventory_router)
 app.include_router(production_router)
 app.include_router(supply_chain_router)
 app.include_router(shipment_tracking.router)
+app.include_router(optimization.router)
 
 @app.on_event("startup")
 async def startup_event():

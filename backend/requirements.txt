@@ -17,4 +17,7 @@ scikit-learn==1.4.0
 pandas==2.2.0
 numpy==1.26.3
 
+# Optimization Algorithms
+ortools==9.9.3963  # Google OR-Tools for constraint programming and optimization
+
 # pymysql==1.1.2  # Optional: Only needed if using MySQL instead of SQLite

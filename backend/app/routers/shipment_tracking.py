@@ -3,7 +3,7 @@ Shipment Tracking Router with AI-powered delay prediction
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
 from app.database.database import get_db
@@ -22,8 +22,20 @@ class ShipmentDelayPredictionRequest(BaseModel):
     shipment_id: int
 
 
+class ShipmentInfo(BaseModel):
+    id: int
+    tracking_number: str
+    status: str
+    shipping_method: str
+    expected_arrival: Optional[str] = None
+    actual_arrival: Optional[str] = None
+    supplier_name: str
+    supplier_address: str
+    notes: str
+
 class ShipmentDelayPredictionResponse(BaseModel):
     shipment_id: int
+    shipment_details: ShipmentInfo
     origin: str
     destination: str
     weather_assessment: Dict[str, Any]
@@ -100,8 +112,22 @@ def predict_shipment_delay(
         ai_prediction.get("expected_delay_days", 0)
     )
     
+    # Prepare shipment details
+    shipment_details = {
+        "id": shipment.id,
+        "tracking_number": shipment.tracking_number or "N/A",
+        "status": shipment.status or "Unknown",
+        "shipping_method": shipment.shipping_method or "Unknown",
+        "expected_arrival": shipment.expected_arrival.isoformat() if shipment.expected_arrival else None,
+        "actual_arrival": shipment.actual_arrival.isoformat() if shipment.actual_arrival else None,
+        "supplier_name": shipment.supplier.name if shipment.supplier else "Unknown Supplier",
+        "supplier_address": origin,
+        "notes": shipment.notes or ""
+    }
+    
     return {
         "shipment_id": shipment.id,
+        "shipment_details": shipment_details,
         "origin": origin,
         "destination": destination,
         "weather_assessment": weather_assessment,
@@ -158,4 +184,30 @@ def get_shipment_status_with_ai(
         }
     
     return shipment_info
+
+
+@router.get("/shipments", response_model=List[Dict[str, Any]])
+def get_all_shipments(
+    db: Session = Depends(get_db),
+    limit: int = 100
+):
+    """
+    Get all shipments for selection in frontend
+    """
+    shipments = db.query(Shipment).limit(limit).all()
+    
+    result = []
+    for shipment in shipments:
+        result.append({
+            "id": shipment.id,
+            "tracking_number": shipment.tracking_number or f"SHIP-{shipment.id:04d}",
+            "status": shipment.status or "Unknown",
+            "shipping_method": shipment.shipping_method or "Unknown",
+            "expected_arrival": shipment.expected_arrival.isoformat() if shipment.expected_arrival else None,
+            "supplier_name": shipment.supplier.name if shipment.supplier else "Unknown Supplier",
+            "supplier_address": shipment.supplier.address if shipment.supplier else "Unknown",
+            "display_name": f"{shipment.tracking_number or f'SHIP-{shipment.id:04d}'} - {shipment.supplier.name if shipment.supplier else 'Unknown'} ({shipment.status or 'Unknown'})"
+        })
+    
+    return result
 

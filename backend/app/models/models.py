@@ -187,6 +187,7 @@ class ProductionSchedule(Base):
 
     order = relationship("Order", back_populates="production_schedules")
     production_line = relationship("ProductionLine", back_populates="schedules")
+    task_assignments = relationship("TaskAssignment", back_populates="production_schedule")
 
 class Shipment(Base):
     __tablename__ = "shipments"
@@ -245,3 +246,41 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Staff(Base):
+    __tablename__ = "staff"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    employee_id = Column(String(50), unique=True, index=True)
+    department = Column(String(50))  # production, quality, maintenance, logistics
+    skill_level = Column(String(20))  # junior, intermediate, senior, expert
+    specialization = Column(String(100))  # assembly, welding, quality_control, etc.
+    hourly_rate = Column(Float, default=0.0)
+    is_available = Column(Boolean, default=True)
+    max_hours_per_day = Column(Integer, default=8)
+    current_workload_hours = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    task_assignments = relationship("TaskAssignment", back_populates="staff")
+
+
+class TaskAssignment(Base):
+    __tablename__ = "task_assignments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    production_schedule_id = Column(Integer, ForeignKey("production_schedules.id"))
+    staff_id = Column(Integer, ForeignKey("staff.id"))
+    task_type = Column(String(50))  # setup, production, quality_check, maintenance
+    assigned_hours = Column(Float)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    status = Column(String(50), default="assigned")  # assigned, in_progress, completed, cancelled
+    notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    production_schedule = relationship("ProductionSchedule", back_populates="task_assignments")
+    staff = relationship("Staff", back_populates="task_assignments")

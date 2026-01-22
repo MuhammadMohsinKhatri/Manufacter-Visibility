@@ -13,6 +13,7 @@ import OrderDetail from './pages/OrderDetail';
 import OrderFeasibility from './pages/OrderFeasibility';
 import Inventory from './pages/Inventory';
 import Production from './pages/Production';
+import ProductionOptimization from './pages/ProductionOptimization';
 import SupplyChain from './pages/SupplyChain';
 import ShipmentTracking from './pages/ShipmentTracking';
 import Login from './pages/Login';
@@ -80,6 +81,7 @@ function App() {
                 <Route path="shipment-tracking" element={<ShipmentTracking />} />
                 <Route path="inventory" element={<Inventory />} />
                 <Route path="production" element={<Production />} />
+                <Route path="production-optimization" element={<ProductionOptimization />} />
                 <Route path="supply-chain" element={<SupplyChain />} />
               </Route>
             </Routes>

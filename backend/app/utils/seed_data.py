@@ -12,7 +12,7 @@ from app.models.models import (
     Customer, Product, Component, ProductComponent, InventoryItem,
     Order, OrderItem, Supplier, SupplierComponent, ProductionLine,
     ProductionSchedule, Shipment, ShipmentItem, ExternalRisk, User,
-    OrderStatus, SupplierReliability, RiskLevel
+    Staff, TaskAssignment, OrderStatus, SupplierReliability, RiskLevel
 )
 
 def seed_database():
@@ -189,19 +189,28 @@ def seed_database():
         print("Creating inventory...")
         inventory_items = []
         
-        for component_id in range(1, 11):
-            # Random inventory levels
-            quantity = random.randint(50, 200)
-            allocated = random.randint(0, min(30, quantity))
-            threshold = random.randint(20, 40)
-            
+        # More realistic inventory levels with some low stock items
+        inventory_data = [
+            (1, 85, 15, 30, "Warehouse A, Aisle 1, Shelf 5"),   # Steel Frame - moderate
+            (2, 250, 50, 100, "Warehouse A, Aisle 2, Shelf 10"), # Rubber Gasket - good stock
+            (3, 120, 40, 50, "Warehouse B, Aisle 3, Shelf 8"),   # Circuit Board - moderate
+            (4, 65, 20, 30, "Warehouse B, Aisle 4, Shelf 3"),     # Power Supply - low
+            (5, 45, 10, 25, "Warehouse B, Aisle 5, Shelf 2"),     # LCD Display - low
+            (6, 95, 25, 40, "Warehouse A, Aisle 6, Shelf 6"),    # Aluminum Housing - moderate
+            (7, 180, 35, 60, "Warehouse A, Aisle 7, Shelf 12"), # Cooling Fan - good stock
+            (8, 110, 30, 45, "Warehouse B, Aisle 8, Shelf 7"),  # Wiring Harness - moderate
+            (9, 200, 40, 80, "Warehouse A, Aisle 9, Shelf 15"),  # Mounting Bracket - good stock
+            (10, 70, 15, 30, "Warehouse B, Aisle 10, Shelf 4")  # Sensor Array - moderate
+        ]
+        
+        for component_id, quantity, allocated, threshold, location in inventory_data:
             inventory_items.append(
                 InventoryItem(
                     component_id=component_id,
                     quantity_available=quantity,
                     quantity_allocated=allocated,
                     reorder_threshold=threshold,
-                    location=f"Warehouse A, Aisle {random.randint(1, 10)}, Shelf {random.randint(1, 20)}"
+                    location=location
                 )
             )
         
@@ -342,6 +351,32 @@ def seed_database():
         now = datetime.utcnow()
         
         orders = [
+            # Historical orders
+            Order(
+                customer_id=1,
+                order_date=now - timedelta(days=60),
+                status=OrderStatus.DELIVERED,
+                estimated_delivery=now - timedelta(days=40),
+                actual_delivery=now - timedelta(days=39),
+                notes="Regular order, delivered on time"
+            ),
+            Order(
+                customer_id=2,
+                order_date=now - timedelta(days=50),
+                status=OrderStatus.DELIVERED,
+                estimated_delivery=now - timedelta(days=30),
+                actual_delivery=now - timedelta(days=29),
+                notes="Bulk order completed successfully"
+            ),
+            Order(
+                customer_id=3,
+                order_date=now - timedelta(days=45),
+                status=OrderStatus.DELIVERED,
+                estimated_delivery=now - timedelta(days=25),
+                actual_delivery=now - timedelta(days=24),
+                notes="Custom configuration delivered"
+            ),
+            # Recent completed orders
             Order(
                 customer_id=1,
                 order_date=now - timedelta(days=30),
@@ -357,6 +392,7 @@ def seed_database():
                 estimated_delivery=now + timedelta(days=5),
                 notes="Expedited shipping requested"
             ),
+            # Active orders
             Order(
                 customer_id=3,
                 order_date=now - timedelta(days=15),
@@ -366,17 +402,61 @@ def seed_database():
             ),
             Order(
                 customer_id=4,
+                order_date=now - timedelta(days=10),
+                status=OrderStatus.IN_PRODUCTION,
+                estimated_delivery=now + timedelta(days=20),
+                notes="Large order in progress"
+            ),
+            # Confirmed orders (ready for optimization)
+            Order(
+                customer_id=4,
                 order_date=now - timedelta(days=5),
                 status=OrderStatus.CONFIRMED,
                 estimated_delivery=now + timedelta(days=25),
-                notes="Standard order"
+                notes="Standard order - ready for production"
             ),
+            Order(
+                customer_id=1,
+                order_date=now - timedelta(days=3),
+                status=OrderStatus.CONFIRMED,
+                estimated_delivery=now + timedelta(days=27),
+                notes="Priority order - needs scheduling"
+            ),
+            Order(
+                customer_id=2,
+                order_date=now - timedelta(days=2),
+                status=OrderStatus.CONFIRMED,
+                estimated_delivery=now + timedelta(days=28),
+                notes="Bulk order - optimize for cost"
+            ),
+            Order(
+                customer_id=5,
+                order_date=now - timedelta(days=1),
+                status=OrderStatus.CONFIRMED,
+                estimated_delivery=now + timedelta(days=30),
+                notes="New order - awaiting optimization"
+            ),
+            # Pending orders
             Order(
                 customer_id=5,
                 order_date=now - timedelta(days=1),
                 status=OrderStatus.PENDING,
                 estimated_delivery=now + timedelta(days=30),
                 notes="Awaiting component availability confirmation"
+            ),
+            Order(
+                customer_id=3,
+                order_date=now,
+                status=OrderStatus.PENDING,
+                estimated_delivery=now + timedelta(days=35),
+                notes="New order - pending feasibility check"
+            ),
+            Order(
+                customer_id=1,
+                order_date=now,
+                status=OrderStatus.PENDING,
+                estimated_delivery=now + timedelta(days=40),
+                notes="Large custom order - under review"
             )
         ]
         db.add_all(orders)
@@ -385,25 +465,43 @@ def seed_database():
         # Create order items
         print("Creating order items...")
         order_items = [
-            # Order 1 (Delivered)
+            # Historical orders
             OrderItem(order_id=1, product_id=1, quantity=2, unit_price=1299.99),
             OrderItem(order_id=1, product_id=3, quantity=1, unit_price=3499.99),
-            
-            # Order 2 (Shipped)
             OrderItem(order_id=2, product_id=2, quantity=10, unit_price=249.99),
             OrderItem(order_id=2, product_id=5, quantity=5, unit_price=899.99),
-            
-            # Order 3 (In Production)
             OrderItem(order_id=3, product_id=4, quantity=3, unit_price=1899.99),
             
-            # Order 4 (Confirmed)
-            OrderItem(order_id=4, product_id=1, quantity=1, unit_price=1299.99),
-            OrderItem(order_id=4, product_id=2, quantity=5, unit_price=249.99),
-            OrderItem(order_id=4, product_id=5, quantity=2, unit_price=899.99),
+            # Recent completed
+            OrderItem(order_id=4, product_id=1, quantity=2, unit_price=1299.99),
+            OrderItem(order_id=4, product_id=3, quantity=1, unit_price=3499.99),
+            OrderItem(order_id=5, product_id=2, quantity=10, unit_price=249.99),
+            OrderItem(order_id=5, product_id=5, quantity=5, unit_price=899.99),
             
-            # Order 5 (Pending)
-            OrderItem(order_id=5, product_id=3, quantity=2, unit_price=3499.99),
-            OrderItem(order_id=5, product_id=4, quantity=4, unit_price=1899.99)
+            # Active production
+            OrderItem(order_id=6, product_id=4, quantity=3, unit_price=1899.99),
+            OrderItem(order_id=7, product_id=1, quantity=5, unit_price=1299.99),
+            OrderItem(order_id=7, product_id=2, quantity=8, unit_price=249.99),
+            
+            # Confirmed (ready for optimization)
+            OrderItem(order_id=8, product_id=1, quantity=1, unit_price=1299.99),
+            OrderItem(order_id=8, product_id=2, quantity=5, unit_price=249.99),
+            OrderItem(order_id=8, product_id=5, quantity=2, unit_price=899.99),
+            OrderItem(order_id=9, product_id=3, quantity=2, unit_price=3499.99),
+            OrderItem(order_id=9, product_id=4, quantity=1, unit_price=1899.99),
+            OrderItem(order_id=10, product_id=2, quantity=15, unit_price=249.99),
+            OrderItem(order_id=10, product_id=5, quantity=10, unit_price=899.99),
+            OrderItem(order_id=11, product_id=1, quantity=3, unit_price=1299.99),
+            OrderItem(order_id=11, product_id=3, quantity=1, unit_price=3499.99),
+            
+            # Pending
+            OrderItem(order_id=12, product_id=3, quantity=2, unit_price=3499.99),
+            OrderItem(order_id=12, product_id=4, quantity=4, unit_price=1899.99),
+            OrderItem(order_id=13, product_id=1, quantity=4, unit_price=1299.99),
+            OrderItem(order_id=13, product_id=2, quantity=12, unit_price=249.99),
+            OrderItem(order_id=14, product_id=3, quantity=3, unit_price=3499.99),
+            OrderItem(order_id=14, product_id=4, quantity=2, unit_price=1899.99),
+            OrderItem(order_id=14, product_id=5, quantity=8, unit_price=899.99)
         ]
         db.add_all(order_items)
         db.commit()
@@ -411,9 +509,40 @@ def seed_database():
         # Create production schedules
         print("Creating production schedules...")
         production_schedules = [
-            # Order 1 (Delivered) - Historical production
+            # Historical completed schedules
             ProductionSchedule(
                 order_id=1,
+                production_line_id=1,
+                scheduled_start=now - timedelta(days=55),
+                scheduled_end=now - timedelta(days=50),
+                actual_start=now - timedelta(days=55),
+                actual_end=now - timedelta(days=49),
+                status="completed",
+                notes="Completed ahead of schedule"
+            ),
+            ProductionSchedule(
+                order_id=2,
+                production_line_id=3,
+                scheduled_start=now - timedelta(days=45),
+                scheduled_end=now - timedelta(days=40),
+                actual_start=now - timedelta(days=45),
+                actual_end=now - timedelta(days=40),
+                status="completed",
+                notes="Completed on schedule"
+            ),
+            ProductionSchedule(
+                order_id=3,
+                production_line_id=2,
+                scheduled_start=now - timedelta(days=40),
+                scheduled_end=now - timedelta(days=35),
+                actual_start=now - timedelta(days=40),
+                actual_end=now - timedelta(days=34),
+                status="completed",
+                notes="Quality check passed"
+            ),
+            # Recent completed
+            ProductionSchedule(
+                order_id=4,
                 production_line_id=1,
                 scheduled_start=now - timedelta(days=25),
                 scheduled_end=now - timedelta(days=20),
@@ -422,10 +551,8 @@ def seed_database():
                 status="completed",
                 notes="Completed ahead of schedule"
             ),
-            
-            # Order 2 (Shipped) - Completed production
             ProductionSchedule(
-                order_id=2,
+                order_id=5,
                 production_line_id=3,
                 scheduled_start=now - timedelta(days=15),
                 scheduled_end=now - timedelta(days=10),
@@ -434,10 +561,9 @@ def seed_database():
                 status="completed",
                 notes="Completed on schedule"
             ),
-            
-            # Order 3 (In Production) - Active production
+            # Active production
             ProductionSchedule(
-                order_id=3,
+                order_id=6,
                 production_line_id=1,
                 scheduled_start=now - timedelta(days=5),
                 scheduled_end=now + timedelta(days=5),
@@ -445,18 +571,25 @@ def seed_database():
                 status="in_progress",
                 notes="Production proceeding normally"
             ),
-            
-            # Order 4 (Confirmed) - Scheduled production
             ProductionSchedule(
-                order_id=4,
+                order_id=7,
+                production_line_id=2,
+                scheduled_start=now - timedelta(days=3),
+                scheduled_end=now + timedelta(days=7),
+                actual_start=now - timedelta(days=3),
+                status="in_progress",
+                notes="Large order in progress"
+            ),
+            # Scheduled (ready to start)
+            ProductionSchedule(
+                order_id=8,
                 production_line_id=2,
                 scheduled_start=now + timedelta(days=5),
                 scheduled_end=now + timedelta(days=15),
                 status="scheduled",
-                notes="Awaiting start"
-            ),
-            
-            # Order 5 (Pending) - Not yet scheduled
+                notes="Awaiting start - confirmed order"
+            )
+            # Orders 9-14 are confirmed/pending and need optimization
         ]
         db.add_all(production_schedules)
         db.commit()
@@ -464,7 +597,26 @@ def seed_database():
         # Create shipments
         print("Creating shipments...")
         shipments = [
-            # Incoming shipment 1 - Arrived
+            # Historical delivered shipments
+            Shipment(
+                supplier_id=1,
+                expected_arrival=now - timedelta(days=30),
+                actual_arrival=now - timedelta(days=30),
+                status="delivered",
+                tracking_number="TRK111111111",
+                shipping_method="Ground",
+                notes="Regular delivery"
+            ),
+            Shipment(
+                supplier_id=2,
+                expected_arrival=now - timedelta(days=25),
+                actual_arrival=now - timedelta(days=24),
+                status="delivered",
+                tracking_number="TRK222222222",
+                shipping_method="Ground",
+                notes="On-time delivery"
+            ),
+            # Recent delivered
             Shipment(
                 supplier_id=1,
                 expected_arrival=now - timedelta(days=5),
@@ -474,8 +626,16 @@ def seed_database():
                 shipping_method="Ground",
                 notes="Regular delivery"
             ),
-            
-            # Incoming shipment 2 - In transit
+            Shipment(
+                supplier_id=3,
+                expected_arrival=now - timedelta(days=3),
+                actual_arrival=now - timedelta(days=2),
+                status="delivered",
+                tracking_number="TRK333333333",
+                shipping_method="Air",
+                notes="Expedited delivery"
+            ),
+            # In transit shipments
             Shipment(
                 supplier_id=3,
                 expected_arrival=now + timedelta(days=10),
@@ -484,8 +644,23 @@ def seed_database():
                 shipping_method="Air",
                 notes="Expedited shipping"
             ),
-            
-            # Incoming shipment 3 - Scheduled
+            Shipment(
+                supplier_id=1,
+                expected_arrival=now + timedelta(days=7),
+                status="in_transit",
+                tracking_number="TRK444444444",
+                shipping_method="Ground",
+                notes="Standard shipping"
+            ),
+            Shipment(
+                supplier_id=4,
+                expected_arrival=now + timedelta(days=12),
+                status="in_transit",
+                tracking_number="TRK555555555",
+                shipping_method="Ground",
+                notes="Bulk materials"
+            ),
+            # Scheduled shipments
             Shipment(
                 supplier_id=4,
                 expected_arrival=now + timedelta(days=20),
@@ -494,8 +669,15 @@ def seed_database():
                 shipping_method="Ocean",
                 notes="Bulk shipment"
             ),
-            
-            # Incoming shipment 4 - Delayed
+            Shipment(
+                supplier_id=2,
+                expected_arrival=now + timedelta(days=25),
+                status="scheduled",
+                tracking_number="TRK666666666",
+                shipping_method="Ground",
+                notes="Scheduled delivery"
+            ),
+            # Delayed shipments
             Shipment(
                 supplier_id=2,
                 expected_arrival=now - timedelta(days=2),
@@ -504,8 +686,15 @@ def seed_database():
                 shipping_method="Ground",
                 notes="Delayed due to weather"
             ),
-            
-            # Incoming shipment 5 - Processing
+            Shipment(
+                supplier_id=5,
+                expected_arrival=now - timedelta(days=1),
+                status="delayed",
+                tracking_number="TRK777777777",
+                shipping_method="Air",
+                notes="Customs delay"
+            ),
+            # Processing shipments
             Shipment(
                 supplier_id=5,
                 expected_arrival=now + timedelta(days=15),
@@ -513,6 +702,14 @@ def seed_database():
                 tracking_number=None,
                 shipping_method="Air",
                 notes="Order being processed by supplier"
+            ),
+            Shipment(
+                supplier_id=3,
+                expected_arrival=now + timedelta(days=18),
+                status="processing",
+                tracking_number=None,
+                shipping_method="Ocean",
+                notes="Awaiting supplier confirmation"
             )
         ]
         db.add_all(shipments)
@@ -521,28 +718,46 @@ def seed_database():
         # Create shipment items
         print("Creating shipment items...")
         shipment_items = [
-            # Shipment 1 items (Delivered)
+            # Historical shipments
             ShipmentItem(shipment_id=1, component_id=3, quantity=50),  # Circuit Board
             ShipmentItem(shipment_id=1, component_id=4, quantity=20),  # Power Supply
-            ShipmentItem(shipment_id=1, component_id=7, quantity=40),  # Cooling Fan
+            ShipmentItem(shipment_id=2, component_id=2, quantity=150), # Rubber Gasket
+            ShipmentItem(shipment_id=2, component_id=6, quantity=25),  # Aluminum Housing
             
-            # Shipment 2 items (In Transit)
-            ShipmentItem(shipment_id=2, component_id=3, quantity=30),  # Circuit Board
-            ShipmentItem(shipment_id=2, component_id=5, quantity=25),  # LCD Display
-            ShipmentItem(shipment_id=2, component_id=10, quantity=15), # Sensor Array
+            # Recent delivered
+            ShipmentItem(shipment_id=3, component_id=3, quantity=50),  # Circuit Board
+            ShipmentItem(shipment_id=3, component_id=4, quantity=20),  # Power Supply
+            ShipmentItem(shipment_id=3, component_id=7, quantity=40),  # Cooling Fan
+            ShipmentItem(shipment_id=4, component_id=5, quantity=30),  # LCD Display
+            ShipmentItem(shipment_id=4, component_id=10, quantity=20), # Sensor Array
             
-            # Shipment 3 items (Scheduled)
-            ShipmentItem(shipment_id=3, component_id=1, quantity=15),  # Steel Frame
-            ShipmentItem(shipment_id=3, component_id=6, quantity=20),  # Aluminum Housing
+            # In transit
+            ShipmentItem(shipment_id=5, component_id=3, quantity=30),  # Circuit Board
+            ShipmentItem(shipment_id=5, component_id=5, quantity=25),  # LCD Display
+            ShipmentItem(shipment_id=5, component_id=10, quantity=15), # Sensor Array
+            ShipmentItem(shipment_id=6, component_id=4, quantity=15),  # Power Supply
+            ShipmentItem(shipment_id=6, component_id=7, quantity=35),  # Cooling Fan
+            ShipmentItem(shipment_id=7, component_id=1, quantity=10),  # Steel Frame
+            ShipmentItem(shipment_id=7, component_id=6, quantity=15),  # Aluminum Housing
             
-            # Shipment 4 items (Delayed)
-            ShipmentItem(shipment_id=4, component_id=2, quantity=200), # Rubber Gasket
-            ShipmentItem(shipment_id=4, component_id=9, quantity=50),  # Mounting Bracket
+            # Scheduled
+            ShipmentItem(shipment_id=8, component_id=1, quantity=15),  # Steel Frame
+            ShipmentItem(shipment_id=8, component_id=6, quantity=20),  # Aluminum Housing
+            ShipmentItem(shipment_id=9, component_id=2, quantity=180), # Rubber Gasket
+            ShipmentItem(shipment_id=9, component_id=9, quantity=45),  # Mounting Bracket
             
-            # Shipment 5 items (Processing)
-            ShipmentItem(shipment_id=5, component_id=3, quantity=40),  # Circuit Board
-            ShipmentItem(shipment_id=5, component_id=8, quantity=30),  # Wiring Harness
-            ShipmentItem(shipment_id=5, component_id=10, quantity=20)  # Sensor Array
+            # Delayed
+            ShipmentItem(shipment_id=10, component_id=2, quantity=200), # Rubber Gasket
+            ShipmentItem(shipment_id=10, component_id=9, quantity=50),  # Mounting Bracket
+            ShipmentItem(shipment_id=11, component_id=3, quantity=25),  # Circuit Board
+            ShipmentItem(shipment_id=11, component_id=8, quantity=20),  # Wiring Harness
+            
+            # Processing
+            ShipmentItem(shipment_id=12, component_id=3, quantity=40),  # Circuit Board
+            ShipmentItem(shipment_id=12, component_id=8, quantity=30),  # Wiring Harness
+            ShipmentItem(shipment_id=12, component_id=10, quantity=20), # Sensor Array
+            ShipmentItem(shipment_id=13, component_id=1, quantity=20),  # Steel Frame
+            ShipmentItem(shipment_id=13, component_id=4, quantity=25),  # Power Supply
         ]
         db.add_all(shipment_items)
         db.commit()
@@ -613,6 +828,257 @@ def seed_database():
             )
         ]
         db.add_all(external_risks)
+        db.commit()
+        
+        # Create staff members
+        print("Creating staff members...")
+        staff_members = [
+            Staff(
+                name="John Anderson",
+                employee_id="EMP001",
+                department="production",
+                skill_level="expert",
+                specialization="Assembly",
+                hourly_rate=45.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=6.0
+            ),
+            Staff(
+                name="Sarah Martinez",
+                employee_id="EMP002",
+                department="production",
+                skill_level="senior",
+                specialization="Welding",
+                hourly_rate=38.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=4.0
+            ),
+            Staff(
+                name="Michael Chen",
+                employee_id="EMP003",
+                department="production",
+                skill_level="senior",
+                specialization="Electronics Assembly",
+                hourly_rate=40.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=5.5
+            ),
+            Staff(
+                name="Emily Johnson",
+                employee_id="EMP004",
+                department="quality",
+                skill_level="expert",
+                specialization="Quality Control",
+                hourly_rate=42.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=3.0
+            ),
+            Staff(
+                name="David Wilson",
+                employee_id="EMP005",
+                department="production",
+                skill_level="intermediate",
+                specialization="Assembly",
+                hourly_rate=28.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=2.0
+            ),
+            Staff(
+                name="Lisa Brown",
+                employee_id="EMP006",
+                department="production",
+                skill_level="intermediate",
+                specialization="Packaging",
+                hourly_rate=25.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=1.5
+            ),
+            Staff(
+                name="Robert Taylor",
+                employee_id="EMP007",
+                department="maintenance",
+                skill_level="senior",
+                specialization="Equipment Maintenance",
+                hourly_rate=35.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=0.0
+            ),
+            Staff(
+                name="Jennifer Davis",
+                employee_id="EMP008",
+                department="production",
+                skill_level="junior",
+                specialization="Assembly",
+                hourly_rate=22.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=0.0
+            ),
+            Staff(
+                name="James Miller",
+                employee_id="EMP009",
+                department="production",
+                skill_level="senior",
+                specialization="Testing",
+                hourly_rate=36.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=4.5
+            ),
+            Staff(
+                name="Patricia Garcia",
+                employee_id="EMP010",
+                department="logistics",
+                skill_level="intermediate",
+                specialization="Material Handling",
+                hourly_rate=26.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=2.0
+            ),
+            Staff(
+                name="William Rodriguez",
+                employee_id="EMP011",
+                department="production",
+                skill_level="expert",
+                specialization="Complex Assembly",
+                hourly_rate=48.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=7.0
+            ),
+            Staff(
+                name="Mary Martinez",
+                employee_id="EMP012",
+                department="quality",
+                skill_level="senior",
+                specialization="Quality Control",
+                hourly_rate=37.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=3.5
+            ),
+            Staff(
+                name="Richard Lee",
+                employee_id="EMP013",
+                department="production",
+                skill_level="intermediate",
+                specialization="Electronics Assembly",
+                hourly_rate=30.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=1.0
+            ),
+            Staff(
+                name="Susan White",
+                employee_id="EMP014",
+                department="production",
+                skill_level="junior",
+                specialization="Packaging",
+                hourly_rate=23.00,
+                is_available=True,
+                max_hours_per_day=8,
+                current_workload_hours=0.5
+            ),
+            Staff(
+                name="Joseph Harris",
+                employee_id="EMP015",
+                department="maintenance",
+                skill_level="expert",
+                specialization="Equipment Maintenance",
+                hourly_rate=44.00,
+                is_available=False,  # On leave
+                max_hours_per_day=8,
+                current_workload_hours=0.0
+            )
+        ]
+        db.add_all(staff_members)
+        db.commit()
+        
+        # Create task assignments
+        print("Creating task assignments...")
+        task_assignments = [
+            # Assignments for active production schedules
+            TaskAssignment(
+                production_schedule_id=6,  # Order 6 - in progress
+                staff_id=1,  # John Anderson
+                task_type="production",
+                assigned_hours=40.0,
+                start_time=now - timedelta(days=5),
+                end_time=now + timedelta(days=5),
+                status="in_progress",
+                notes="Main assembly work"
+            ),
+            TaskAssignment(
+                production_schedule_id=6,
+                staff_id=4,  # Emily Johnson
+                task_type="quality_check",
+                assigned_hours=8.0,
+                start_time=now + timedelta(days=3),
+                end_time=now + timedelta(days=5),
+                status="assigned",
+                notes="Final quality inspection"
+            ),
+            TaskAssignment(
+                production_schedule_id=7,  # Order 7 - in progress
+                staff_id=2,  # Sarah Martinez
+                task_type="production",
+                assigned_hours=50.0,
+                start_time=now - timedelta(days=3),
+                end_time=now + timedelta(days=7),
+                status="in_progress",
+                notes="Welding and assembly"
+            ),
+            TaskAssignment(
+                production_schedule_id=7,
+                staff_id=3,  # Michael Chen
+                task_type="production",
+                assigned_hours=45.0,
+                start_time=now - timedelta(days=2),
+                end_time=now + timedelta(days=6),
+                status="in_progress",
+                notes="Electronics integration"
+            ),
+            TaskAssignment(
+                production_schedule_id=7,
+                staff_id=9,  # James Miller
+                task_type="quality_check",
+                assigned_hours=12.0,
+                start_time=now + timedelta(days=5),
+                end_time=now + timedelta(days=7),
+                status="assigned",
+                notes="Testing and validation"
+            ),
+            # Assignment for scheduled production
+            TaskAssignment(
+                production_schedule_id=8,  # Order 8 - scheduled
+                staff_id=5,  # David Wilson
+                task_type="production",
+                assigned_hours=60.0,
+                start_time=now + timedelta(days=5),
+                end_time=now + timedelta(days=15),
+                status="assigned",
+                notes="Scheduled assembly work"
+            ),
+            TaskAssignment(
+                production_schedule_id=8,
+                staff_id=6,  # Lisa Brown
+                task_type="production",
+                assigned_hours=40.0,
+                start_time=now + timedelta(days=10),
+                end_time=now + timedelta(days=15),
+                status="assigned",
+                notes="Packaging and preparation"
+            )
+        ]
+        db.add_all(task_assignments)
         db.commit()
         
         # Create users
